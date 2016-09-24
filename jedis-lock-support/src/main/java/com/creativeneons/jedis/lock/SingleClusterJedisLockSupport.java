@@ -41,18 +41,22 @@ public class SingleClusterJedisLockSupport implements JedisLockSupport {
 		long timeToWaitInMs = timeUnit == TimeUnit.MILLISECONDS ? timeout : timeUnit.toMillis(timeout);
 		try (Jedis jedis = jedisPool.getResource();) {
 			while (!acquired && timeToWaitInMs >= 0) {
-				timeToWaitInMs = timeToWaitInMs - MIN_WAIT_MS;
 				synchronized (key) {
 					acquired = isMine(key, owner, jedis) || added(key, owner, jedis);
 				}
-				try {
-					TimeUnit.MILLISECONDS.wait(MIN_WAIT_MS);
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-				}
+				timeToWaitInMs = timeToWaitInMs - MIN_WAIT_MS;
+				waitForRetry();
 			}
 		}
 		return acquired;
+	}
+
+	private void waitForRetry() {
+		try {
+			TimeUnit.MILLISECONDS.wait(MIN_WAIT_MS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	String lua_script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
