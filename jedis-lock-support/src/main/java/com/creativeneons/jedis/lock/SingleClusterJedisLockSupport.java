@@ -37,7 +37,7 @@ public class SingleClusterJedisLockSupport implements JedisLockSupport {
 		try (Jedis jedis = jedisPool.getResource();) {
 			while (!acquired && timeToWaitInMs >= 0) {
 				synchronized (key) {
-					acquired = isMine(key, owner, jedis) || added(key, owner, jedis);
+					acquired = isMine(key, owner, jedis) || locked(key, owner, jedis);
 				}
 				timeToWaitInMs = timeToWaitInMs - MIN_WAIT_MS;
 				if (timeToWaitInMs > 0)
@@ -77,7 +77,7 @@ public class SingleClusterJedisLockSupport implements JedisLockSupport {
 		return new StringBuilder(key.length() + owner.length() + 2).append(key).append("::").append(owner).toString();
 	}
 
-	private boolean added(String key, String owner, Jedis jedis) {
+	private boolean locked(String key, String owner, Jedis jedis) {
 		return Objects.nonNull(setIfNotExists(key, owner, jedis));
 	}
 
