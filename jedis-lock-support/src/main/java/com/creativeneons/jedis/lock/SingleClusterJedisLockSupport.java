@@ -26,12 +26,7 @@ public class SingleClusterJedisLockSupport implements JedisLockSupport {
 
 	@Override
 	public boolean acquire(String key, String owner) {
-		key = normalizeKey(key);
-		synchronized (key) {
-			try (Jedis jedis = jedisPool.getResource();) {
-				return isMine(key, owner, jedis) || added(key, owner, jedis);
-			}
-		}
+		return tryAcquire(key, owner, 0l, TimeUnit.MILLISECONDS);
 	}
 
 	@Override
@@ -45,7 +40,8 @@ public class SingleClusterJedisLockSupport implements JedisLockSupport {
 					acquired = isMine(key, owner, jedis) || added(key, owner, jedis);
 				}
 				timeToWaitInMs = timeToWaitInMs - MIN_WAIT_MS;
-				waitForRetry();
+				if (timeToWaitInMs > 0)
+					waitForRetry();
 			}
 		}
 		return acquired;
